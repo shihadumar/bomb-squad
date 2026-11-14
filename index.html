@@ -1,0 +1,342 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bomb Squad</title>
+    <style>
+      @font-face {
+        font-family: Righteous;
+        src: url("./Righteous-Regular.ttf") format("truetype");
+      }
+      body {
+        overscroll-behavior: contain;
+        background-color: #000000;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+      }
+      .canvas-container {
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #canvas {
+        width: 100%;
+      }
+      @media (min-aspect-ratio: 16/9) {
+        #canvas {
+          width: calc(1600vh / 9);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="canvas-container">
+      <!-- Canvas to Display Game -->
+      <canvas id="canvas" width="1600" height="900"></canvas>
+    </div>
+    <script>
+      (function () {
+        const ctx = document.getElementById("canvas").getContext("2d");
+        let state = "notice";
+        let selectedLevel = 0;
+        let direction = 0;
+        let currX = 0;
+        let currY = 0;
+        let markerlock = false;
+        let selectedAns = 0;
+        let markers = [];
+        let levels = [
+          {
+            maxMarkers: 5,
+            startPos: [800, 450],
+            direction: 0,
+            buildings: [
+              [100, 100, 100, 100],
+              [200, 300, 100, 200],
+              [800, 100, 200, 100],
+              [1100, 500, 200, 200],
+              [100, 600, 200, 200],
+              [500, 500, 100, 200],
+            ],
+            bombPosition: 4,
+          },
+          {
+            maxMarkers: 5,
+            startPos: [800, 450],
+            direction: 0,
+            buildings: [
+              [100, 100, 100, 100],
+              [200, 300, 100, 200],
+              [800, 100, 200, 100],
+              [1100, 500, 200, 200],
+              [100, 600, 200, 200],
+              [500, 500, 100, 200],
+            ],
+            bombPosition: 6,
+          },
+          {
+            maxMarkers: 5,
+            startPos: [800, 450],
+            direction: 0,
+            buildings: [
+              [100, 100, 100, 100],
+              [200, 300, 100, 200],
+              [800, 100, 200, 100],
+              [1100, 500, 200, 200],
+              [100, 600, 200, 200],
+              [500, 500, 100, 200],
+            ],
+            bombPosition: 1,
+          },
+        ];
+
+        document.addEventListener("keydown", function () {
+          if (state == "notice") {
+            state = "start";
+            startScreen(selectedLevel);
+          } else if (state == "start") {
+            if (
+              (event.key == "ArrowUp" || event.key == "w") &&
+              selectedLevel > 0
+            ) {
+              selectedLevel -= 1;
+              ctx.clearRect(0, 0, 1600, 900);
+              startScreen(selectedLevel);
+            } else if (
+              (event.key == "ArrowDown" || event.key == "s") &&
+              selectedLevel < 2
+            ) {
+              selectedLevel += 1;
+              ctx.clearRect(0, 0, 1600, 900);
+              startScreen(selectedLevel);
+            } else if (event.key == "Enter" || event.key == " ") {
+              console.log(selectedLevel);
+              startLevel(selectedLevel);
+            }
+          } else if (state == "game") {
+            if (event.key == "ArrowUp" || event.key == "w") {
+              temp = true;
+              tempX = currX + Math.cos(direction) * 20;
+              tempY = currY + Math.sin(direction) * 20;
+
+              levels[selectedLevel].buildings.forEach((elm) => {
+                if (
+                  tempX >= elm[0] - 15 &&
+                  tempX <= elm[0] + 15 + elm[2] &&
+                  tempY >= elm[1] - 15 &&
+                  tempY <= elm[1] + 15 + elm[3]
+                ) {
+                  temp = false;
+                }
+              });
+              if (temp) {
+                currX = tempX;
+                currY = tempY;
+                renderGame();
+              }
+            } else if (event.key == "ArrowDown" || event.key == "s") {
+              temp = true;
+              tempX = currX - Math.cos(direction) * 20;
+              tempY = currY - Math.sin(direction) * 20;
+
+              levels[selectedLevel].buildings.forEach((elm) => {
+                if (
+                  tempX >= elm[0] - 15 &&
+                  tempX <= elm[0] + 15 + elm[2] &&
+                  tempY >= elm[1] - 15 &&
+                  tempY <= elm[1] + 15 + elm[3]
+                ) {
+                  temp = false;
+                }
+              });
+              if (temp) {
+                currX = tempX;
+                currY = tempY;
+                renderGame();
+              }
+            } else if (event.key == "ArrowRight" || event.key == "d") {
+              direction += Math.PI / 4;
+              renderGame();
+            } else if (event.key == "ArrowLeft" || event.key == "a") {
+              direction -= Math.PI / 4;
+              renderGame();
+            } else if (
+              (event.key == "Enter" || event.key == " ") &&
+              markers.length < levels[selectedLevel].maxMarkers &&
+              !markerlock
+            ) {
+              markerlock = true;
+              console.log(selectedLevel);
+              bombPos = levels[selectedLevel].bombPosition;
+              bombBuild = levels[selectedLevel].buildings[bombPos];
+              bombdX = Math.abs(currX - (bombBuild[0] + bombBuild[2] / 2));
+              bombdY = Math.abs(currY - (bombBuild[1] + bombBuild[3] / 2));
+              d = Math.sqrt((bombdX ^ 2) + (bombdY ^ 2)) * 10;
+              markers.push([currX, currY, Math.round(d)]);
+              renderGame();
+            } else if (event.key == "e") {
+              state = "selection";
+              renderSelection(selectedLevel);
+            }
+          } else if (state == "selection") {
+            if (Number(event.key) >= 0 && Number(event.key) <= 9) {
+              selectedAns = Number(event.key);
+              renderGame();
+              renderSelection(selectedLevel);
+            } else if (event.key == "Enter" || event.key == " ") {
+              state = "end";
+              gameEnd(levels[selectedLevel].bombPosition == selectedAns);
+            }
+          }
+        });
+        document.addEventListener("keyup", function () {
+          markerlock = false;
+        });
+
+        function renderSelection(level) {
+          levels[level].buildings.forEach((elm, idx) => {
+            cX = elm[0] + elm[2] / 2;
+            cY = elm[1] + elm[3] / 2;
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#000000";
+            if (idx == selectedAns) {
+              ctx.fillStyle = "#FF0000";
+            }
+            ctx.font = "40px Courier New";
+            ctx.fillText(idx, cX, cY + 10);
+          });
+        }
+
+        function renderMarkers(markers) {
+          markers.forEach((elm) => {
+            if (elm[2] < 200) {
+              ctx.fillStyle = "#238823";
+            } else if (elm[2] < 250) {
+              ctx.fillStyle = "#FFBF00";
+            } else {
+              ctx.fillStyle = "#D2222D";
+            }
+            ctx.beginPath();
+            ctx.arc(elm[0], elm[1], 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#FFFFFF";
+            ctx.font = "15px Courier New";
+            ctx.fillText(elm[2], elm[0], elm[1] + 5);
+          });
+        }
+
+        function startLevel(level) {
+          state = "game";
+          markers = [];
+          currX = levels[level].startPos[0];
+          currY = levels[level].startPos[1];
+          renderGame();
+        }
+
+        function renderGame() {
+          ctx.clearRect(0, 0, 1600, 900);
+          renderPlayer(currX, currY, direction);
+          renderLevel(selectedLevel);
+          renderMarkers(markers);
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = "20px Courier New";
+          ctx.fillText(
+            markers.length + "/" + levels[selectedLevel].maxMarkers,
+            800,
+            20,
+          );
+        }
+
+        function gameEnd(win) {
+          ctx.clearRect(0, 0, 1600, 900);
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = "100px Courier New";
+          if (win) {
+            ctx.fillText("Won! Bomb Found!", 800, 450);
+          } else {
+            ctx.fillText("Game Over! Bomb Not Found!", 800, 450);
+          }
+        }
+
+        function renderPlayer(x, y, direction) {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.beginPath();
+          ctx.arc(x, y, 20, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#FFFFFFF";
+          ctx.beginPath();
+          ctx.arc(x, y, 20, (Math.PI * 7) / 5, (Math.PI * 8) / 10);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(
+            x + 20 * Math.cos(direction + 0.5),
+            y + 20 * Math.sin(direction + 0.5),
+            4,
+            0,
+            Math.PI * 2,
+          );
+          ctx.arc(
+            x + 20 * Math.cos(direction - 0.5),
+            y + 20 * Math.sin(direction - 0.5),
+            4,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+
+        function renderLevel(level) {
+          levels[level].buildings.forEach((elm) => {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.beginPath();
+            ctx.fillRect(elm[0], elm[1], elm[2], elm[3]);
+            ctx.fill();
+            ctx.fillStyle = "#AAAAAA";
+            ctx.beginPath();
+            ctx.fillRect(elm[0] + 5, elm[1] + 5, elm[2] - 10, elm[3] - 10);
+            ctx.fill();
+          });
+        }
+
+        function startScreen(level) {
+          ctx.clearRect(0, 0, 1600, 900);
+
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = "100px Courier New";
+          ctx.fillText("Bomb Squad", 800, 200);
+          ctx.font = "50px Courier New";
+          ctx.fillText("Level 1", 800, 400);
+          ctx.fillText("Level 2", 800, 500);
+          ctx.fillText("Level 3", 800, 600);
+          ctx.fillStyle = "#FFFFFF";
+          ctx.beginPath();
+          ctx.fillRect(675, 250 + (level + 1) * 100, 250, 60);
+          ctx.fill();
+          ctx.fillStyle = "#000000";
+          ctx.fillText("Level " + (level + 1), 800, 300 + (level + 1) * 100);
+        }
+
+        ctx.clearRect(0, 0, 1600, 900);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "50px Courier New";
+        ctx.fillText("You are in the bomb disposal team.", 800, 100);
+        ctx.fillText("Use the bounce back time from the bomb", 800, 200);
+        ctx.fillText("and detonator to triangulate its position.", 800, 300);
+        ctx.fillText("Use space to mark.", 800, 400);
+        ctx.fillText("Use arrows and WASD to move", 800, 500);
+        ctx.fillText("Press any key to continue.", 800, 600);
+        ctx.fillText("Press E to end and numbers to select.", 800, 700);
+      })();
+    </script>
+  </body>
+</html>
