@@ -77,7 +77,7 @@
               [100, 600, 200, 200],
               [500, 500, 100, 200],
             ],
-            bombPosition: 6,
+            bombPosition: 5,
           },
           {
             maxMarkers: 5,
@@ -115,7 +115,6 @@
               ctx.clearRect(0, 0, 1600, 900);
               startScreen(selectedLevel);
             } else if (event.key == "Enter" || event.key == " ") {
-              console.log(selectedLevel);
               startLevel(selectedLevel);
             }
           } else if (state == "game") {
@@ -171,7 +170,6 @@
               !markerlock
             ) {
               markerlock = true;
-              console.log(selectedLevel);
               bombPos = levels[selectedLevel].bombPosition;
               bombBuild = levels[selectedLevel].buildings[bombPos];
               bombdX = Math.abs(currX - (bombBuild[0] + bombBuild[2] / 2));
